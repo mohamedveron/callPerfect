@@ -7,7 +7,8 @@ import (
     "net/http"
     "strconv"
     "encoding/json"
-    "github.com/gorilla/mux"
+   // "github.com/gorilla/mux"
+    "github.com/rs/cors"
 
     _ "github.com/go-sql-driver/mysql"
 )
@@ -93,12 +94,12 @@ func checkUser(person Person) bool{
 
 
 func main() {
-    router := mux.NewRouter()
-    router.HandleFunc("/login", login).Methods("POST")
-    router.HandleFunc("/register", register).Methods("POST")
-    err := http.ListenAndServe(":9090", router) // setting listening port
-    if err != nil {
-        log.Fatal("ListenAndServe: ", err)
-    }
+    //router := mux.NewRouter()
+    mux := http.NewServeMux()
+    mux.HandleFunc("/login", login)
+    mux.HandleFunc("/register", register)
+    handler := cors.Default().Handler(mux)
+    http.ListenAndServe(":9090", handler)
+    
     
 }
