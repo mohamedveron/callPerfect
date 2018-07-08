@@ -4,7 +4,8 @@ import (
        "github.com/gin-gonic/gin"
 	   "github.com/jinzhu/gorm"
 	   "net/http"
-     "log"
+     "time"
+     "github.com/gin-contrib/cors"
 	   _ "github.com/jinzhu/gorm/dialects/mysql"
 )
 
@@ -12,17 +13,32 @@ type (
  // companyModel describes a companyModel type
  companyModel struct {
   gorm.Model
-  Company_name     string `json:"name" binding:"required"`
-  Contact_name     string `json:"contact" binding:"required"`
+  Company_name     string `json:"companyName" binding:"required"`
+  Contact_name     string `json:"contactName" binding:"required"`
   Mobile     string `json:"mobile" binding:"required"`
+  Email     string `json:"email" binding:"required"`
+  Password     string `json:"password" binding:"required"`
+  Address1     string `json:"address1" binding:"required"`
+  Address2     string `json:"address2" binding:"required"`
+  City     string `json:"city" binding:"required"`
+  State     string `json:"state" binding:"required"`
+  Zip     string `json:"zip" binding:"required"`
+  HearAboutUs     string `json:"hearAboutUs" binding:"required"`
+  TotalPhones     int `json:"totalPhones" binding:"required"`
+  Card_name     string `json:"card_name" binding:"required"`
+  Card_number     string `json:"card_number" binding:"required"`
+  Card_zip    string `json:"card_zip" binding:"required"`
+  ExpiredDate     time.Time `json:"expiredDate" binding:"required"`
+  SecurityDate     time.Time `json:"securityDate" binding:"required"`
+  TermsAccepted     int `json:"termsAccepted" binding:"required"`
+
 
  }
 
 // transformedTodo represents a formatted todo
- transformedTodo struct {
-  ID        uint   `json:"id"`
-  Title     string `json:"title"`
-  Completed bool   `json:"completed"`
+ loginModel struct {
+  Email     string `json:"email"`
+  Password bool   `json:"password"`
  }
 
 )
@@ -62,11 +78,11 @@ func register(c *gin.Context) {
 }
 
 func login(c *gin.Context) {
-  var json companyModel
+  var json loginModel
   var com companyModel
 
   c.BindJSON(&json)
-  db.First(&com, "company_name = ?", json.Company_name)
+  db.Find(&com, "email = ?", json.Email)
 
   if com.Company_name == "" {
     c.JSON(http.StatusNotFound, gin.H{"status": http.StatusNotFound, "message": "No company found!"})
@@ -93,6 +109,9 @@ router := gin.Default()
 	// 	authorized.POST("/submit", submitEndpoint)
 	// 	authorized.POST("/read", readEndpoint)
 	// }
+
+  // handle cors problem
+  router.Use(cors.Default())
 
 v1 := router.Group("/api/v1/company")
  {
