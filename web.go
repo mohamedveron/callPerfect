@@ -1,121 +1,103 @@
 package main
 
 import (
-    "fmt"
-    "html/template"
-    "strings"
-    "database/sql"
-    "log"
-    "net/http"
-    "strconv"
-
-    _ "github.com/go-sql-driver/mysql"
+       "github.com/gin-gonic/gin"
+	   "github.com/jinzhu/gorm"
+	   "net/http"
+     "log"
+	   _ "github.com/jinzhu/gorm/dialects/mysql"
 )
 
-func dbConn() (db *sql.DB) {
-    dbDriver := "mysql"
-    dbUser := "root"
-    dbPass := "01117042116vero"
-    dbName := "negro"
-    db, err := sql.Open(dbDriver, dbUser+":"+dbPass+"@/"+dbName)
-    if err != nil {
-        panic(err.Error())
-    }
-    return db
+type (
+ // companyModel describes a companyModel type
+ companyModel struct {
+  gorm.Model
+  Company_name     string `json:"name" binding:"required"`
+  Contact_name     string `json:"contact" binding:"required"`
+  Mobile     string `json:"mobile" binding:"required"`
+
+ }
+
+// transformedTodo represents a formatted todo
+ transformedTodo struct {
+  ID        uint   `json:"id"`
+  Title     string `json:"title"`
+  Completed bool   `json:"completed"`
+ }
+
+)
+
+var db *gorm.DB
+
+func init() {
+ //open a db connection
+ var err error
+ db, err = gorm.Open("mysql", "root:01117042116vero@/callperfect?charset=utf8&parseTime=True&loc=Local")
+ if err != nil {
+  panic("failed to connect database")
+ }
+
+//Migrate the schema
+ db.AutoMigrate(&companyModel{})
 }
 
-func sayhelloName(w http.ResponseWriter, r *http.Request) {
-    r.ParseForm() //Parse url parameters passed, then parse the response packet for the POST body (request body)
-    // attention: If you do not call ParseForm method, the following data can not be obtained form
-    fmt.Println(r.Form) // print information on server side.
-    fmt.Println("path", r.URL.Path)
-    fmt.Println("scheme", r.URL.Scheme)
-    fmt.Println(r.Form["url_long"])
-    for k, v := range r.Form {
-        fmt.Println("key:", k)
-        fmt.Println("val:", strings.Join(v, ""))
-    }
-    fmt.Fprintf(w, "Hello astaxie!") // write data to response
+// createTodo add a new todo
+func register(c *gin.Context) {
+  var json companyModel
+
+  err := c.BindJSON(&json)
+
+  if err == nil {	
+
+        db.Save(&json)		
+				c.JSON(http.StatusOK, gin.H{"status": "you are signed up"})
+			
+		} else {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		}
+
+
+ c.JSON(http.StatusCreated, gin.H{"status": http.StatusCreated, "message": "company item created successfully!"})
+
 }
 
-func login(w http.ResponseWriter, r *http.Request) {
-    fmt.Println("method:", r.Method) //get request method
-    if r.Method == "GET" {
-        t, _ := template.ParseFiles("login.gtpl")
-        t.Execute(w, nil)
-    } else {
+func login(c *gin.Context) {
+  var json companyModel
+  var com companyModel
 
-        var flag = checkUser(r)
-        if flag{
-            t, _ := template.ParseFiles("index.gtpl")
-            t.Execute(w, nil)
-        }else{
-             t, _ := template.ParseFiles("login.gtpl")
-             t.Execute(w, nil)
-        }
-        
-    }
+  c.BindJSON(&json)
+  db.First(&com, "company_name = ?", json.Company_name)
+
+  if com.Company_name == "" {
+    c.JSON(http.StatusNotFound, gin.H{"status": http.StatusNotFound, "message": "No company found!"})
+      return
+ }
+
+
+ c.JSON(http.StatusCreated, gin.H{"status": http.StatusCreated, "message": "Todo item found successfully!"})
+
 }
-
-func Insert(r *http.Request) {
-    db := dbConn()
-    if r.Method == "POST" {
-        id, err := strconv.Atoi(r.Form.Get("id"))
-        address := r.Form["address"][0]
-        name := r.Form["username"][0]
-        password := r.Form["password"][0]
-        insForm, err := db.Prepare("INSERT INTO student(id, address, name, password) VALUES(?,?,?,?)")
-        if err != nil {
-            panic(err.Error())
-        }
-        insForm.Exec(id, address, name, password)
-        log.Println("INSERT: Name: ")
-        
-    }
-    defer db.Close()
-}
-
-func register(w http.ResponseWriter, r *http.Request) {
-    fmt.Println("method:", r.Method) //get request method
-    if r.Method == "GET" {
-        t, _ := template.ParseFiles("form/register.gtpl")
-        t.Execute(w, nil)
-       // tmpl.ExecuteTemplate(w, "register", "res")
-    } else {
-        r.ParseForm()
-        
-        // insert into db
-        Insert(r)
-        t, _ := template.ParseFiles("login.gtpl")
-        t.Execute(w, nil)
-    }
-}
-
-func checkUser(r *http.Request) bool{
-    db := dbConn()
-    r.ParseForm()
-    // logic part of log in
-    name := r.Form["username"][0]
-    password := r.Form["password"][0]
-    fmt.Println("name:", r.Form["username"])
-    fmt.Println("pass:", r.Form["password"])
-    var flag bool
-    err := db.QueryRow("SELECT IF(COUNT(*),'true','false') FROM student WHERE name = ? and password = ? ", name, password).Scan(&flag)
-    if err != nil {
-        panic(err.Error())
-    }
-    
-    return flag
-}
-
-var tmpl = template.Must(template.ParseGlob("form/*"))
 
 func main() {
-    http.HandleFunc("/", sayhelloName) // setting router rule
-    http.HandleFunc("/login", login)
-    http.HandleFunc("/register", register)
-    err := http.ListenAndServe(":9090", nil) // setting listening port
-    if err != nil {
-        log.Fatal("ListenAndServe: ", err)
-    }
+router := gin.Default()
+
+	// Authorization group
+	// authorized := r.Group("/", AuthRequired())
+	// exactly the same as:
+	// authorized := router.Group("/")
+	// // per group middleware! in this case we use the custom created
+	// // AuthRequired() middleware just in the "authorized" group.
+	// authorized.Use(AuthRequired())
+	// {
+	// 	authorized.POST("/login", loginEndpoint)
+	// 	authorized.POST("/submit", submitEndpoint)
+	// 	authorized.POST("/read", readEndpoint)
+	// }
+
+v1 := router.Group("/api/v1/company")
+ {
+  v1.POST("/register", register)
+  v1.POST("/login", login)
+ }
+ router.Run(":9090")
 }
