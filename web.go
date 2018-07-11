@@ -6,6 +6,7 @@ import (
 	   "net/http"
      "time"
      "github.com/gin-contrib/cors"
+     
 	   _ "github.com/jinzhu/gorm/dialects/mysql"
 )
 
@@ -38,7 +39,11 @@ type (
 // transformedTodo represents a formatted todo
  loginModel struct {
   Email     string `json:"email"`
-  Password bool   `json:"password"`
+  Password  string   `json:"password"`
+ }
+
+ registerModel struct{
+   Company companyModel
  }
 
 )
@@ -59,13 +64,13 @@ func init() {
 
 // createTodo add a new todo
 func register(c *gin.Context) {
-  var json companyModel
+  var json registerModel
 
   err := c.BindJSON(&json)
 
   if err == nil {	
 
-        db.Save(&json)		
+        db.Save(&json.Company)		
 				c.JSON(http.StatusOK, gin.H{"status": "you are signed up"})
 			
 		} else {
@@ -82,7 +87,9 @@ func login(c *gin.Context) {
   var com companyModel
 
   c.BindJSON(&json)
-  db.Find(&com, "email = ?", json.Email)
+  
+  db.Find(&com, "email = ? and password = ?", json.Email, json.Password)
+  
 
   if com.Company_name == "" {
     c.JSON(http.StatusNotFound, gin.H{"status": http.StatusNotFound, "message": "No company found!"})
