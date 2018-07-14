@@ -1,12 +1,13 @@
 package main
 
 import (
+
        "github.com/gin-gonic/gin"
 	   "github.com/jinzhu/gorm"
 	   "net/http"
      "time"
      "github.com/gin-contrib/cors"
-     
+     "golang.org/x/crypto/bcrypt"
 	   _ "github.com/jinzhu/gorm/dialects/mysql"
 )
 
@@ -25,7 +26,7 @@ type (
   State     string `json:"state" binding:"required"`
   Zip     string `json:"zip" binding:"required"`
   HearAboutUs     string `json:"hearAboutUs" binding:"required"`
-  TotalPhones     int `json:"totalPhones" binding:"required"`
+  TotalPhones     int `json:"totalPhones,string,omitempty"`
   Card_name     string `json:"card_name" binding:"required"`
   Card_number     string `json:"card_number" binding:"required"`
   Card_zip    string `json:"card_zip" binding:"required"`
@@ -62,6 +63,16 @@ func init() {
  db.AutoMigrate(&companyModel{})
 }
 
+func HashPassword(password string) (string, error) {
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
+	return string(bytes), err
+}
+
+func CheckPasswordHash(password, hash string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	return err == nil
+}
+
 // createTodo add a new todo
 func register(c *gin.Context) {
   var json registerModel
@@ -70,6 +81,8 @@ func register(c *gin.Context) {
 
   if err == nil {	
 
+        json.Company.Password, _ = HashPassword(json.Company.Password)
+        
         db.Save(&json.Company)		
 				c.JSON(http.StatusOK, gin.H{"status": "you are signed up"})
 			
@@ -87,11 +100,12 @@ func login(c *gin.Context) {
   var com companyModel
 
   c.BindJSON(&json)
-  
-  db.Find(&com, "email = ? and password = ?", json.Email, json.Password)
-  
 
-  if com.Company_name == "" {
+  db.Find(&com, "email = ?", json.Email)
+  
+  match := CheckPasswordHash(json.Password, com.Password)
+
+  if !match {
     c.JSON(http.StatusNotFound, gin.H{"status": http.StatusNotFound, "message": "No company found!"})
       return
  }
@@ -103,19 +117,6 @@ func login(c *gin.Context) {
 
 func main() {
 router := gin.Default()
-
-	// Authorization group
-	// authorized := r.Group("/", AuthRequired())
-	// exactly the same as:
-	// authorized := router.Group("/")
-	// // per group middleware! in this case we use the custom created
-	// // AuthRequired() middleware just in the "authorized" group.
-	// authorized.Use(AuthRequired())
-	// {
-	// 	authorized.POST("/login", loginEndpoint)
-	// 	authorized.POST("/submit", submitEndpoint)
-	// 	authorized.POST("/read", readEndpoint)
-	// }
 
   // handle cors problem
   router.Use(cors.Default())
