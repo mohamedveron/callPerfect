@@ -1,8 +1,6 @@
 package main
 
 import (
-	"log"
-
        "github.com/gin-gonic/gin"
 	   "github.com/jinzhu/gorm"
 	   "net/http"
@@ -10,6 +8,7 @@ import (
      "github.com/gin-contrib/cors"
      "golang.org/x/crypto/bcrypt"
 	   _ "github.com/jinzhu/gorm/dialects/mysql"
+     "log"
 )
 
 type (
@@ -35,7 +34,6 @@ type (
   SecurityDate     time.Time `json:"securityDate" binding:"required"`
   TermsAccepted     int `json:"termsAccepted" binding:"required"`
 
-
  }
 
 // transformedTodo represents a formatted todo
@@ -48,24 +46,30 @@ type (
    Company companyModel
  }
 
- packageModel struct{
+ PackageModel struct{
     gorm.Model
     Type string `json:"type" binding:"required"`
     Price int   `json:"price,string,omitempty"`
-
-    options  []optionModel `gorm:"many2many:package_options;"`
-
+    Options  []OptionModel `json:"options" binding:"required"`
  }
 
- optionModel struct{
+ OptionModel struct{
    gorm.Model
     Content string  `json:"content" binding:"required"`
  }
+
+ PackageOptionModel struct{
+   gorm.Model
+    PackageID uint
+    OptionID uint
+ }
+
 
  feedBackModel struct{
    gorm.Model
     Content string  `json:"content" binding:"required"`
     UserID  string `json:"id" binding:"required"`
+    
  }
 
 )
@@ -83,6 +87,9 @@ func init() {
 //Migrate the schema
  db.AutoMigrate(&companyModel{})
  db.AutoMigrate(&feedBackModel{})
+ db.AutoMigrate(&PackageModel{})
+ db.AutoMigrate(&OptionModel{})
+ db.AutoMigrate(&PackageOptionModel{})
 }
 
 func HashPassword(password string) (string, error) {
@@ -177,6 +184,34 @@ func getFeedBack(c *gin.Context) {
 
 }
 
+func addPackageAndOptions(c *gin.Context){
+  var json PackageModel
+
+    c.Bind(&json)
+   
+  
+  var option OptionModel
+  var packageOptions PackageOptionModel
+
+  db.Save(&json)
+  packageOptions.PackageID = json.ID
+
+  for o,v := range json.Options{
+
+    log.Println(o)
+    option.Content = v.Content
+    db.Save(&option)
+    packageOptions.OptionID = option.ID
+    db.Save(&packageOptions)
+
+  }
+
+  
+
+  c.JSON(http.StatusOK, gin.H{"status": "your package and it's options submited"})
+
+}
+
 func main() {
 router := gin.Default()
 
@@ -189,6 +224,7 @@ v1 := router.Group("/api/v1/company")
   v1.POST("/login", login)
   v1.POST("/feedBack", addFeedBack)
   v1.POST("/getFeedBack", getFeedBack)
+  v1.POST("/addPackage", addPackageAndOptions)
  }
  router.Run(":9090")
 }
