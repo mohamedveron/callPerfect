@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 
        "github.com/gin-gonic/gin"
 	   "github.com/jinzhu/gorm"
@@ -47,6 +48,26 @@ type (
    Company companyModel
  }
 
+ packageModel struct{
+    gorm.Model
+    Type string `json:"type" binding:"required"`
+    Price int   `json:"price,string,omitempty"`
+
+    options  []optionModel `gorm:"many2many:package_options;"`
+
+ }
+
+ optionModel struct{
+   gorm.Model
+    Content string  `json:"content" binding:"required"`
+ }
+
+ feedBackModel struct{
+   gorm.Model
+    Content string  `json:"content" binding:"required"`
+    UserID  string `json:"id" binding:"required"`
+ }
+
 )
 
 var db *gorm.DB
@@ -61,6 +82,7 @@ func init() {
 
 //Migrate the schema
  db.AutoMigrate(&companyModel{})
+ db.AutoMigrate(&feedBackModel{})
 }
 
 func HashPassword(password string) (string, error) {
@@ -115,6 +137,46 @@ func login(c *gin.Context) {
 
 }
 
+// createTodo add a new todo
+func addFeedBack(c *gin.Context) {
+  var json feedBackModel
+
+  err := c.BindJSON(&json)
+
+  if err == nil {	
+
+        
+        db.Save(&json)		
+				c.JSON(http.StatusOK, gin.H{"status": "your feedback submited"})
+			
+		} else {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		}
+
+
+ c.JSON(http.StatusCreated, gin.H{"status": http.StatusCreated, "message": "feedback item created successfully!"})
+
+}
+
+func getFeedBack(c *gin.Context) {
+  var json feedBackModel
+  var feeds []feedBackModel
+
+  err := c.BindJSON(&json)
+
+  if err == nil {	
+        db.Find(&feeds, "user_id= ?", json.UserID)	
+				c.JSON(http.StatusOK, gin.H{"status": feeds})
+			
+		} else {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		}
+
+
+ c.JSON(http.StatusCreated, gin.H{"status": http.StatusCreated, "message": "feedback item created successfully!"})
+
+}
+
 func main() {
 router := gin.Default()
 
@@ -125,6 +187,8 @@ v1 := router.Group("/api/v1/company")
  {
   v1.POST("/register", register)
   v1.POST("/login", login)
+  v1.POST("/feedBack", addFeedBack)
+  v1.POST("/getFeedBack", getFeedBack)
  }
  router.Run(":9090")
 }
