@@ -8,6 +8,7 @@ import (
      "github.com/gin-contrib/cors"
      "golang.org/x/crypto/bcrypt"
 	   _ "github.com/jinzhu/gorm/dialects/mysql"
+     "log"
 )
 
 type (
