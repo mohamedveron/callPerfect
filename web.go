@@ -1,110 +1,6 @@
 package main
 
 import (
-<<<<<<< HEAD
-    "fmt"
-    "database/sql"
-    "log"
-    "net/http"
-    "strconv"
-    "encoding/json"
-    "github.com/gorilla/mux"
-
-    _ "github.com/go-sql-driver/mysql"
-)
-
-type Person struct {
-    ID        string   `json:"id,omitempty"`
-    Name      string   `json:"name,omitempty"`
-    Password  string   `json:"password,omitempty"`
-    Address   string   `json:"address,omitempty"`
-}
-
-func dbConn() (db *sql.DB) {
-    dbDriver := "mysql"
-    dbUser := "root"
-    dbPass := "01117042116vero"
-    dbName := "negro"
-    db, err := sql.Open(dbDriver, dbUser+":"+dbPass+"@/"+dbName)
-    if err != nil {
-        panic(err.Error())
-    }
-    return db
-}
-
-func setupResponse(w *http.ResponseWriter, req *http.Request) {
-	(*w).Header().Set("Access-Control-Allow-Origin", "*")
-    (*w).Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
-    (*w).Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
-}
-
-func login(w http.ResponseWriter, r *http.Request) {
-    setupResponse(&w, r)
-   var person Person
-    _ = json.NewDecoder(r.Body).Decode(&person)
-     if checkUser(person){
-        json.NewEncoder(w).Encode(person)
-     }else{
-        json.NewEncoder(w).Encode("{ok}") 
-     }
-    
-}
-
-func Insert(person Person) {
-    db := dbConn()
-
-        id, err := strconv.Atoi(person.ID)
-        address := person.Address
-        name := person.Name
-        password := person.Password
-        insForm, err := db.Prepare("INSERT INTO student(id, address, name, password) VALUES(?,?,?,?)")
-        if err != nil {
-            panic(err.Error())
-        }
-        insForm.Exec(id, address, name, password)
-        log.Println("INSERT: Name: ")
-        
-    defer db.Close()
-}
-
-func register(w http.ResponseWriter, r *http.Request) {
-    //params := mux.Vars(r)
-    setupResponse(&w, r)
-    var person Person
-    _ = json.NewDecoder(r.Body).Decode(&person)
-     Insert(person)
-    json.NewEncoder(w).Encode(person)
-}
-
-func checkUser(person Person) bool{
-    db := dbConn()
-    // logic part of log in
-    name := person.Name
-    password := person.Password
-    fmt.Println("name:", name)
-    fmt.Println("pass:", password)
-    var flag bool
-    err := db.QueryRow("SELECT IF(COUNT(*),'true','false') FROM student WHERE name = ? and password = ? ", name, password).Scan(&flag)
-    if err != nil {
-        panic(err.Error())
-    }
-    
-    return flag
-}
-
-
-func main() {
-    router := mux.NewRouter()
-    router.HandleFunc("/login", login).Methods("POST")
-    router.HandleFunc("/register", register).Methods("POST")
-    err := http.ListenAndServe(":9090", router) // setting listening port
-    if err != nil {
-        log.Fatal("ListenAndServe: ", err)
-    }
-    
-=======
-	"log"
-
        "github.com/gin-gonic/gin"
 	   "github.com/jinzhu/gorm"
 	   "net/http"
@@ -137,7 +33,6 @@ type (
   SecurityDate     time.Time `json:"securityDate" binding:"required"`
   TermsAccepted     int `json:"termsAccepted" binding:"required"`
 
-
  }
 
 // transformedTodo represents a formatted todo
@@ -150,24 +45,48 @@ type (
    Company companyModel
  }
 
- packageModel struct{
+ PackageModel struct{
     gorm.Model
     Type string `json:"type" binding:"required"`
     Price int   `json:"price,string,omitempty"`
-
-    options  []optionModel `gorm:"many2many:package_options;"`
-
+    Options  []OptionModel `json:"options" binding:"required"`
  }
 
- optionModel struct{
+ OptionModel struct{
    gorm.Model
     Content string  `json:"content" binding:"required"`
  }
+
+ PackageOptionModel struct{
+   gorm.Model
+    PackageID uint
+    OptionID uint
+ }
+
 
  feedBackModel struct{
    gorm.Model
     Content string  `json:"content" binding:"required"`
     UserID  string `json:"id" binding:"required"`
+    
+ }
+
+ SliderModel struct{
+   gorm.Model
+    ImagePath string  `json:"path" binding:"required"`
+    Link  string `json:"link" binding:"required"`
+    Deleted int   `json:"deleted,string,omitempty"`
+    
+ }
+
+  FeatureModel struct{
+   gorm.Model
+    ImagePath string  `json:"path" binding:"omitempty"`
+    Link  string `json:"link" binding:"omitempty"`
+    Deleted int   `json:"deleted,string,omitempty"`
+    Activted int   `json:"activated,string,omitempty"`
+    Content string   `json:"content,omitempty"`
+    
  }
 
 )
@@ -185,6 +104,11 @@ func init() {
 //Migrate the schema
  db.AutoMigrate(&companyModel{})
  db.AutoMigrate(&feedBackModel{})
+ db.AutoMigrate(&PackageModel{})
+ db.AutoMigrate(&OptionModel{})
+ db.AutoMigrate(&PackageOptionModel{})
+ db.AutoMigrate(&SliderModel{})
+ db.AutoMigrate(&FeatureModel{})
 }
 
 func HashPassword(password string) (string, error) {
@@ -239,7 +163,7 @@ func login(c *gin.Context) {
 
 }
 
-// createTodo add a new todo
+// create add a new feedback
 func addFeedBack(c *gin.Context) {
   var json feedBackModel
 
@@ -279,6 +203,87 @@ func getFeedBack(c *gin.Context) {
 
 }
 
+func addPackageAndOptions(c *gin.Context){
+  var json PackageModel
+
+    c.Bind(&json)
+   
+  
+  var option OptionModel
+  var packageOptions PackageOptionModel
+
+  db.Save(&json)
+  packageOptions.PackageID = json.ID
+
+  for o,v := range json.Options{
+
+    log.Println(o)
+    option.Content = v.Content
+    db.Save(&option)
+    packageOptions.OptionID = option.ID
+    db.Save(&packageOptions)
+
+  }
+
+  
+
+  c.JSON(http.StatusOK, gin.H{"status": "your package and it's options submited"})
+
+}
+
+// create add a new slider
+func addSlider(c *gin.Context) {
+  var json SliderModel
+
+  err := c.BindJSON(&json)
+
+  if err == nil {	
+
+        db.Save(&json)		
+				c.JSON(http.StatusOK, gin.H{"status": "your Slider submited"})
+			
+		} else {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		}
+
+}
+
+// get all active sliders
+func getActivedSliders(c *gin.Context) {
+  var sliders []SliderModel
+            
+        db.Find(&sliders, "deleted = 0")	
+
+  c.JSON(http.StatusCreated, gin.H{"status": http.StatusCreated, "sliders": sliders})
+}
+
+
+// create add a new Feature
+func addFeature(c *gin.Context) {
+  var json FeatureModel
+
+  err := c.BindJSON(&json)
+
+  if err == nil {	
+
+        db.Save(&json)		
+				c.JSON(http.StatusOK, gin.H{"status": "your Feature submited"})
+			
+		} else {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		}
+
+}
+
+// get all active features
+func getActivedFeatures(c *gin.Context) {
+  var features []FeatureModel
+            
+        db.Find(&features, "deleted = 0 and activted = 0")	
+
+  c.JSON(http.StatusCreated, gin.H{"status": http.StatusCreated, "features": features})
+}
+
 func main() {
 router := gin.Default()
 
@@ -291,7 +296,11 @@ v1 := router.Group("/api/v1/company")
   v1.POST("/login", login)
   v1.POST("/feedBack", addFeedBack)
   v1.POST("/getFeedBack", getFeedBack)
+  v1.POST("/addPackage", addPackageAndOptions)
+  v1.POST("/addSlider", addSlider)
+  v1.GET("/getActivedSliders", getActivedSliders)
+  v1.POST("/addFeature", addFeature)
+  v1.GET("/getActivedFeatures", getActivedFeatures)
  }
  router.Run(":9090")
->>>>>>> password_hashing
 }
