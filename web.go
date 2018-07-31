@@ -90,6 +90,26 @@ type (
     
  }
 
+ SubscriberModel struct{
+   gorm.Model
+    Email     string `json:"email" binding:"required"`
+    Activated int   `json:"activated,string,omitempty"`   
+ }
+
+ ContactUsModel struct{
+   gorm.Model
+    Mobile1     string `json:"mobile1" binding:"required"`
+    Mobile2     string `json:"mobile2,omitempty"` 
+    Address1     string `json:"address1" binding:"required"`
+    Address2     string `json:"address2,omitempty"`
+    Facebook     string `json:"facebook,omitempty"`
+    Twitter     string `json:"twitter,omitempty"` 
+    Skype     string `json:"skype,omitempty"` 
+    Linkedin     string `json:"linkedin,omitempty"` 
+    Youtube     string `json:"youtube,omitempty"`
+    Deleted int   `json:"deleted,string,omitempty"`    
+ }
+
 )
 
 var db *gorm.DB
@@ -110,6 +130,8 @@ func init() {
  db.AutoMigrate(&PackageOptionModel{})
  db.AutoMigrate(&SliderModel{})
  db.AutoMigrate(&FeatureModel{})
+ db.AutoMigrate(&SubscriberModel{})
+ db.AutoMigrate(&ContactUsModel{})
 }
 
 func HashPassword(password string) (string, error) {
@@ -280,9 +302,61 @@ func addFeature(c *gin.Context) {
 func getActivedFeatures(c *gin.Context) {
   var features []FeatureModel
             
-        db.Find(&features, "deleted = 0 and activted = 0")	
+        db.Find(&features, "deleted = 0 and activted = 1")	
 
   c.JSON(http.StatusCreated, gin.H{"status": http.StatusCreated, "features": features})
+}
+
+// create add a new Suscribe
+func addSuscriber(c *gin.Context) {
+  var json SubscriberModel
+
+  err := c.BindJSON(&json)
+
+  if err == nil {	
+
+        db.Save(&json)		
+				c.JSON(http.StatusOK, gin.H{"status": "your Suscribe submited"})
+			
+		} else {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		}
+
+}
+
+// get all active features
+func getActiveSuscribers(c *gin.Context) {
+  var Suscribers []SubscriberModel
+            
+  db.Find(&Suscribers, " activated = 1")	
+
+  c.JSON(http.StatusCreated, gin.H{"status": http.StatusCreated, "Suscribers": Suscribers})
+}
+
+// create add a new Suscribe
+func addContactUs(c *gin.Context) {
+  var json ContactUsModel
+
+  err := c.BindJSON(&json)
+
+  if err == nil {	
+
+        db.Save(&json)		
+				c.JSON(http.StatusOK, gin.H{"status": "your ContactUs submited"})
+			
+		} else {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		}
+
+}
+
+// get last active contact us
+func getActiveContactUs(c *gin.Context) {
+  var contactus ContactUsModel
+            
+  db.Last(&contactus, " deleted = 0")	
+
+  c.JSON(http.StatusCreated, gin.H{"status": http.StatusCreated, "Contactus": contactus})
 }
 
 func main() {
@@ -302,6 +376,10 @@ v1 := router.Group("/api/v1/company")
   v1.GET("/getActivedSliders", getActivedSliders)
   v1.POST("/addFeature", addFeature)
   v1.GET("/getActivedFeatures", getActivedFeatures)
+  v1.POST("/addSuscriber", addSuscriber)
+  v1.GET("/getActiveSuscribers", getActiveSuscribers)
+  v1.POST("/addContactUs", addContactUs)
+  v1.GET("/getActiveContactUs", getActiveContactUs)
  }
  router.Run(":9090")
 }
