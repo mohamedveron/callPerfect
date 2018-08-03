@@ -378,8 +378,8 @@ v1 := router.Group("/api/v1/company")
   v1.GET("/getActivedFeatures", getActivedFeatures)
   v1.POST("/addSuscriber", addSuscriber)
   v1.GET("/getActiveSuscribers", getActiveSuscribers)
-  v1.POST("/addContactUs", addContactUs)
-  v1.GET("/getActiveContactUs", getActiveContactUs)
+  //v1.POST("/addContactUs", addContactUs)
+  //v1.GET("/getActiveContactUs", getActiveContactUs)
  }
  router.Run(":9090")
 }
