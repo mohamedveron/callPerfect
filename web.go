@@ -77,6 +77,8 @@ type (
     ImagePath string  `json:"path" binding:"required"`
     Link  string `json:"link" binding:"required"`
     Deleted int   `json:"deleted,string,omitempty"`
+    Content string  `json:"content" binding:"required"`
+    Title string  `json:"title" binding:"required"`
     
  }
 
@@ -87,6 +89,7 @@ type (
     Deleted int   `json:"deleted,string,omitempty"`
     Activted int   `json:"activated,string,omitempty"`
     Content string   `json:"content,omitempty"`
+    Title string  `json:"title" binding:"required"`
     
  }
 
@@ -108,6 +111,16 @@ type (
     Linkedin     string `json:"linkedin,omitempty"` 
     Youtube     string `json:"youtube,omitempty"`
     Deleted int   `json:"deleted,string,omitempty"`    
+ }
+
+ ProductModel struct{
+   gorm.Model
+    ImagePath string  `json:"path" binding:"omitempty"`
+    Deleted int   `json:"deleted,string,omitempty"`
+    Activted int   `json:"activated,string,omitempty"`
+    Content string   `json:"content,omitempty"`
+    Title string  `json:"title" binding:"required"`
+    
  }
 
 )
@@ -378,8 +391,8 @@ v1 := router.Group("/api/v1/company")
   v1.GET("/getActivedFeatures", getActivedFeatures)
   v1.POST("/addSuscriber", addSuscriber)
   v1.GET("/getActiveSuscribers", getActiveSuscribers)
-  //v1.POST("/addContactUs", addContactUs)
-  //v1.GET("/getActiveContactUs", getActiveContactUs)
+  v1.POST("/addContactUs", addContactUs)
+  v1.GET("/getActiveContactUs", getActiveContactUs)
  }
  router.Run(":9090")
 }
