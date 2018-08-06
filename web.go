@@ -115,12 +115,22 @@ type (
 
  ProductModel struct{
    gorm.Model
-    ImagePath string  `json:"path" binding:"omitempty"`
-    Deleted int   `json:"deleted,string,omitempty"`
+    Name string   `json:"content,omitempty"`
+    Price     float32 `json:"price,string,omitempty"`
     Activted int   `json:"activated,string,omitempty"`
-    Content string   `json:"content,omitempty"`
-    Title string  `json:"title" binding:"required"`
+    Type int  `json:"int" binding:"required"`
     
+ }
+
+ ProductImages struct{
+   gorm.Model
+   ImagePath string  `json:"path" binding:"omitempty"`
+   ProjectID int  `json:"int" binding:"required"`
+ }
+
+ ProductTypes struct{
+   gorm.Model
+   Name string   `json:"content,omitempty"`
  }
 
 )
@@ -241,30 +251,66 @@ func getFeedBack(c *gin.Context) {
 
 func addPackageAndOptions(c *gin.Context){
   var json PackageModel
+  var pkg PackageModel
+  var pid uint
 
     c.Bind(&json)
-   
-  
-  var option OptionModel
-  var packageOptions PackageOptionModel
+    db.Find(&pkg, "type = ?", json.Type)
 
-  db.Save(&json)
-  packageOptions.PackageID = json.ID
+    // if package exist don't insert
+    if pkg.Type == json.Type{
+        pid = pkg.ID
+    }else{
+      db.Save(&json)
+      pid = json.ID
+    }
+    
 
   for o,v := range json.Options{
 
-    log.Println(o)
-    option.Content = v.Content
-    db.Save(&option)
+    var option OptionModel
+    var packageOptions PackageOptionModel
+    packageOptions.PackageID = pid
+
+    db.Find(&option, "content = ?", v.Content)
+
+    //check if option exists
+    if option.Content == v.Content{
+        log.Println(o)
+    }else{
+       option.Content = v.Content
+      db.Save(&option)
+    }
+   
     packageOptions.OptionID = option.ID
     db.Save(&packageOptions)
 
-  }
-
-  
+  } 
 
   c.JSON(http.StatusOK, gin.H{"status": "your package and it's options submited"})
 
+}
+
+type Row struct {
+    x string
+    y string
+
+}
+
+// get active packages and its options
+func getPackageAndOptions(c *gin.Context){
+  rows, err := db.Table("package_models").Select("package_models.price, option_models.content").Joins("join package_option_models on package_option_models.package_id = package_models.id").Joins("join option_models on package_option_models.option_id = option_models.id").Rows()
+     
+     log.Println(err)
+      for rows.Next() {
+         var row Row
+
+        if err := rows.Scan(&row.x, &row.y); err != nil {
+            // do something with error
+        } else {
+            log.Println(row)
+        }
+      }
 }
 
 // create add a new slider
@@ -372,6 +418,32 @@ func getActiveContactUs(c *gin.Context) {
   c.JSON(http.StatusCreated, gin.H{"status": http.StatusCreated, "Contactus": contactus})
 }
 
+// create add a new Product
+func addProduct(c *gin.Context) {
+  var json ProductModel
+
+  err := c.BindJSON(&json)
+
+  if err == nil {	
+
+        db.Save(&json)		
+				c.JSON(http.StatusOK, gin.H{"status": "your Product submited"})
+			
+		} else {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		}
+
+}
+
+// get active products
+func getActiveProducts(c *gin.Context) {
+  var products []ProductModel
+            
+  db.Find(&products, " activated = 0")	
+
+  c.JSON(http.StatusCreated, gin.H{"status": http.StatusCreated, "products": products})
+}
+
 func main() {
 router := gin.Default()
 
@@ -393,6 +465,8 @@ v1 := router.Group("/api/v1/company")
   v1.GET("/getActiveSuscribers", getActiveSuscribers)
   v1.POST("/addContactUs", addContactUs)
   v1.GET("/getActiveContactUs", getActiveContactUs)
+  v1.GET("/getPackages", getPackageAndOptions)
  }
  router.Run(":9090")
 }
+
