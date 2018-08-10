@@ -9,6 +9,7 @@ import (
      "golang.org/x/crypto/bcrypt"
 	   _ "github.com/jinzhu/gorm/dialects/mysql"
      "log"
+     "strconv"
 )
 
 type (
@@ -294,23 +295,49 @@ func addPackageAndOptions(c *gin.Context){
 type Row struct {
     x string
     y string
+    z string
 
 }
 
 // get active packages and its options
 func getPackageAndOptions(c *gin.Context){
-  rows, err := db.Table("package_models").Select("package_models.price, option_models.content").Joins("join package_option_models on package_option_models.package_id = package_models.id").Joins("join option_models on package_option_models.option_id = option_models.id").Rows()
+  rows, err := db.Table("package_models").Select("package_models.type, package_models.price, option_models.content").Joins("join package_option_models on package_option_models.package_id = package_models.id").Joins("join option_models on package_option_models.option_id = option_models.id").Rows()
      
-     log.Println(err)
+     var pkgs = make(map[string]PackageModel)
+     //db.Model(&pkg).Related(&opts, "Options")
+       log.Println(err)
       for rows.Next() {
-         var row Row
 
-        if err := rows.Scan(&row.x, &row.y); err != nil {
-            // do something with error
+        var pkg PackageModel
+        var opt OptionModel
+        var row Row
+
+        if err := rows.Scan(&row.x, &row.y, &row.z); err != nil {
+            log.Println(err)
+
         } else {
-            log.Println(row)
-        }
+
+            if pk, ok := pkgs[row.x]; ok{
+                var opt1 OptionModel
+                 opt1.Content = row.z
+                 pk.Options = append(pk.Options, opt1)
+                 log.Println(pk)
+                 pkgs[row.x] = pk
+                 
+            }else{
+
+              opt.Content = row.z
+
+              pkg.Type = row.x
+              pkg.Price, err = strconv.Atoi(row.y)
+              pkg.Options = append(pkg.Options, opt)
+
+              pkgs[row.x] = pkg
+            }
+        } 
       }
+
+        c.JSON(http.StatusOK, gin.H{"packages": pkgs})
 }
 
 // create add a new slider
