@@ -116,17 +116,18 @@ type (
 
  ProductModel struct{
    gorm.Model
-    Name string   `json:"content,omitempty"`
-    Price     float32 `json:"price,string,omitempty"`
-    Activted int   `json:"activated,string,omitempty"`
-    Type int  `json:"int" binding:"required"`
+    Name string   `json:"name,omitempty"`
+    Price     float64 `json:"price,string,omitempty"`
+    Activated int   `json:"activated,string,omitempty"`
+    Type int   `json:"type,string,omitempty"`
+    Images  []ProductImage  `json:"images" binding:"required"`
     
  }
 
- ProductImages struct{
+ ProductImage struct{
    gorm.Model
    ImagePath string  `json:"path" binding:"omitempty"`
-   ProjectID int  `json:"int" binding:"required"`
+   ProductID uint  
  }
 
  ProductTypes struct{
@@ -156,6 +157,7 @@ func init() {
  db.AutoMigrate(&FeatureModel{})
  db.AutoMigrate(&SubscriberModel{})
  db.AutoMigrate(&ContactUsModel{})
+ db.AutoMigrate(&ProductModel{}, &ProductImage{}, &ProductTypes{})
 }
 
 func HashPassword(password string) (string, error) {
@@ -293,10 +295,11 @@ func addPackageAndOptions(c *gin.Context){
 }
 
 type Row struct {
+    id uint
     x string
     y string
     z string
-
+    w string
 }
 
 // get active packages and its options
@@ -445,15 +448,24 @@ func getActiveContactUs(c *gin.Context) {
   c.JSON(http.StatusCreated, gin.H{"status": http.StatusCreated, "Contactus": contactus})
 }
 
-// create add a new Product
+// create add a new Product and it's images
 func addProduct(c *gin.Context) {
   var json ProductModel
 
   err := c.BindJSON(&json)
 
+  log.Println(json)
   if err == nil {	
 
-        db.Save(&json)		
+        db.Save(&json)	
+
+        for k, v := range json.Images{
+          log.Println(k)
+          var img ProductImage
+          img.ImagePath = v.ImagePath
+          img.ProductID = json.ID
+          db.Save(&img)
+        }	
 				c.JSON(http.StatusOK, gin.H{"status": "your Product submited"})
 			
 		} else {
@@ -464,11 +476,64 @@ func addProduct(c *gin.Context) {
 
 // get active products
 func getActiveProducts(c *gin.Context) {
-  var products []ProductModel
-            
-  db.Find(&products, " activated = 0")	
+  //var products []ProductModel
+  rows, err := db.Table("product_models").Select("product_models.id, product_models.name, product_models.price, product_types.name, product_images.image_path").Joins("join product_images on product_images.product_id = product_models.id and activated = 1").Joins("join product_types on product_types.id = product_models.type").Rows()
+  log.Println(err) 
+  log.Println(rows)     
+  var products = make(map[string]ProductModel)
+  for rows.Next(){
 
+    var prod ProductModel
+    var img ProductImage
+    var row Row
+    if err := rows.Scan(&row.id, &row.x, &row.y, &row.z, &row.w); err != nil {
+            log.Println(err)
+
+        } else {
+
+          if p, ok := products[row.x]; ok{
+
+            img.ImagePath = row.w
+            img.ProductID = row.id
+
+            p.Images = append(p.Images, img)
+
+            products[row.x] = p
+
+          }else{
+              prod.ID = row.id
+              prod.Name = row.x
+              prod.Price, err = strconv.ParseFloat(row.y, 64)
+              prod.Type, err = strconv.Atoi(row.z)
+
+              img.ImagePath = row.w
+              img.ProductID = row.id
+
+              prod.Images = append(prod.Images, img)
+
+              products[row.x] = prod
+          } 
+        }
+  }     
+  
   c.JSON(http.StatusCreated, gin.H{"status": http.StatusCreated, "products": products})
+}
+
+// create add a new type
+func addProductType(c *gin.Context) {
+  var json ProductTypes
+
+  err := c.BindJSON(&json)
+
+  if err == nil {	
+
+        
+        db.Save(&json)		
+				c.JSON(http.StatusOK, gin.H{"status": "your product type added"})
+			
+		} else {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		}
 }
 
 func main() {
@@ -493,6 +558,9 @@ v1 := router.Group("/api/v1/company")
   v1.POST("/addContactUs", addContactUs)
   v1.GET("/getActiveContactUs", getActiveContactUs)
   v1.GET("/getPackages", getPackageAndOptions)
+  v1.POST("/addProduct", addProduct)
+  v1.GET("/getActiveProducts", getActiveProducts)
+  v1.POST("/addProductType", addProductType)
  }
  router.Run(":9090")
 }
