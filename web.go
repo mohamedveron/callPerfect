@@ -516,7 +516,13 @@ func getActiveProducts(c *gin.Context) {
         }
   }     
   
-  c.JSON(http.StatusCreated, gin.H{"status": http.StatusCreated, "products": products})
+    var prods []ProductModel
+
+    for _, v := range products{
+      prods = append(prods, v)
+      
+    }
+  c.JSON(http.StatusCreated, gin.H{"status": http.StatusCreated, "products": prods})
 }
 
 // create add a new type
