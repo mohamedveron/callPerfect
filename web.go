@@ -117,7 +117,7 @@ type (
  ProductModel struct{
    gorm.Model
     Name string   `json:"name,omitempty"`
-    Price     float64 `json:"price,string,omitempty"`
+    Description string `json:"description,omitempty"`
     Activated int   `json:"activated,string,omitempty"`
     Type int   `json:"type,string,omitempty"`
     Images  []ProductImage  `json:"images" binding:"required"`
@@ -127,6 +127,7 @@ type (
  ProductImage struct{
    gorm.Model
    ImagePath string  `json:"path" binding:"omitempty"`
+   Price     float64 `json:"price,string,omitempty"`
    ProductID uint  
  }
 
@@ -134,6 +135,16 @@ type (
    gorm.Model
    Name string   `json:"content,omitempty"`
  }
+
+  Touch struct {
+    gorm.Model
+    Company_name     string `json:"companyName" binding:"required"`
+    Name     string `json:"name" binding:"required"`
+    Mobile     string `json:"mobile" binding:"required"`
+    Email     string `json:"email" binding:"required"`
+    TotalPhones     int `json:"totalPhones,string,omitempty"`
+    Message     string `json:"message" binding:"required"`
+  }
 
 )
 
@@ -158,6 +169,7 @@ func init() {
  db.AutoMigrate(&SubscriberModel{})
  db.AutoMigrate(&ContactUsModel{})
  db.AutoMigrate(&ProductModel{}, &ProductImage{}, &ProductTypes{})
+ db.AutoMigrate(&Touch{})
 }
 
 func HashPassword(password string) (string, error) {
@@ -300,6 +312,7 @@ type Row struct {
     y string
     z string
     w string
+    v string
 }
 
 // get active packages and its options
@@ -463,6 +476,7 @@ func addProduct(c *gin.Context) {
           log.Println(k)
           var img ProductImage
           img.ImagePath = v.ImagePath
+          img.Price = v.Price
           img.ProductID = json.ID
           db.Save(&img)
         }	
@@ -477,7 +491,7 @@ func addProduct(c *gin.Context) {
 // get active products
 func getActiveProducts(c *gin.Context) {
   //var products []ProductModel
-  rows, err := db.Table("product_models").Select("product_models.id, product_models.name, product_models.price, product_types.name, product_images.image_path").Joins("join product_images on product_images.product_id = product_models.id and activated = 1").Joins("join product_types on product_types.id = product_models.type").Rows()
+  rows, err := db.Table("product_models").Select("product_models.id, product_models.name, product_images.price, product_types.name, product_images.image_path, product_models.description").Joins("join product_images on product_images.product_id = product_models.id and activated = 1").Joins("join product_types on product_types.id = product_models.type").Rows()
   log.Println(err) 
   log.Println(rows)     
   var products = make(map[string]ProductModel)
@@ -486,7 +500,7 @@ func getActiveProducts(c *gin.Context) {
     var prod ProductModel
     var img ProductImage
     var row Row
-    if err := rows.Scan(&row.id, &row.x, &row.y, &row.z, &row.w); err != nil {
+    if err := rows.Scan(&row.id, &row.x, &row.y, &row.z, &row.w, &row.v); err != nil {
             log.Println(err)
 
         } else {
@@ -494,6 +508,7 @@ func getActiveProducts(c *gin.Context) {
           if p, ok := products[row.x]; ok{
 
             img.ImagePath = row.w
+            img.Price, err = strconv.ParseFloat(row.y, 64)
             img.ProductID = row.id
 
             p.Images = append(p.Images, img)
@@ -503,10 +518,11 @@ func getActiveProducts(c *gin.Context) {
           }else{
               prod.ID = row.id
               prod.Name = row.x
-              prod.Price, err = strconv.ParseFloat(row.y, 64)
+              prod.Description = row.v
               prod.Type, err = strconv.Atoi(row.z)
 
               img.ImagePath = row.w
+              img.Price, err = strconv.ParseFloat(row.y, 64)
               img.ProductID = row.id
 
               prod.Images = append(prod.Images, img)
@@ -542,6 +558,23 @@ func addProductType(c *gin.Context) {
 		}
 }
 
+// create add a new get in touch
+func addGetInTouch(c *gin.Context) {
+  var json Touch
+
+  err := c.BindJSON(&json)
+
+  if err == nil {	
+
+        db.Save(&json)		
+				c.JSON(http.StatusOK, gin.H{"status": "your new get in touch submited"})
+			
+		} else {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		}
+
+}
+
 func main() {
 router := gin.Default()
 
@@ -567,6 +600,7 @@ v1 := router.Group("/api/v1/company")
   v1.POST("/addProduct", addProduct)
   v1.GET("/getActiveProducts", getActiveProducts)
   v1.POST("/addProductType", addProductType)
+  v1.POST("/addGetInTouch", addGetInTouch)
  }
  router.Run(":9090")
 }
