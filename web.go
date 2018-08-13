@@ -246,21 +246,10 @@ func addFeedBack(c *gin.Context) {
 }
 
 func getFeedBack(c *gin.Context) {
-  var json feedBackModel
   var feeds []feedBackModel
 
-  err := c.BindJSON(&json)
-
-  if err == nil {	
-        db.Find(&feeds, "user_id= ?", json.UserID)	
-				c.JSON(http.StatusOK, gin.H{"status": feeds})
-			
-		} else {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		}
-
-
- c.JSON(http.StatusCreated, gin.H{"status": http.StatusCreated, "message": "feedback item created successfully!"})
+        db.Find(&feeds)	
+				c.JSON(http.StatusOK, gin.H{"feedbacks": feeds})
 
 }
 
@@ -586,7 +575,7 @@ v1 := router.Group("/api/v1/company")
   v1.POST("/register", register)
   v1.POST("/login", login)
   v1.POST("/feedBack", addFeedBack)
-  v1.POST("/getFeedBack", getFeedBack)
+  v1.GET("/getFeedBack", getFeedBack)
   v1.POST("/addPackage", addPackageAndOptions)
   v1.POST("/addSlider", addSlider)
   v1.GET("/getActivedSliders", getActivedSliders)
