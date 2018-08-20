@@ -33,7 +33,7 @@ type (
   Card_zip    string `json:"card_zip" binding:"required"`
   ExpiredDate     time.Time `json:"expiredDate" binding:"required"`
   SecurityDate     time.Time `json:"securityDate" binding:"required"`
-  TermsAccepted     int `json:"termsAccepted" binding:"required"`
+  TermsAccepted     int `json:"termsAccepted,string,omitempty"`
 
  }
 
@@ -146,7 +146,23 @@ type (
     Message     string `json:"message" binding:"required"`
   }
 
+  FeedBack struct{
+    Company string 
+    Content string  
+    User string 
+ }
+ 
+
 )
+
+type Row struct {
+    id uint
+    x string
+    y string
+    z string
+    w string
+    v string
+}
 
 var db *gorm.DB
 
@@ -220,7 +236,7 @@ func login(c *gin.Context) {
  }
 
 
- c.JSON(http.StatusCreated, gin.H{"status": http.StatusCreated, "message": "Todo item found successfully!"})
+ c.JSON(http.StatusCreated, gin.H{"status": http.StatusCreated, "message": "logged in successfully!"})
 
 }
 
@@ -246,9 +262,30 @@ func addFeedBack(c *gin.Context) {
 }
 
 func getFeedBack(c *gin.Context) {
-  var feeds []feedBackModel
+  var feeds []FeedBack
+    rows, err := db.Table("feed_back_models").Select("content, company_name, contact_name").Joins("join company_models on feed_back_models.user_id = company_models.id").Rows()
 
-        db.Find(&feeds)	
+      if(err != nil){
+        log.Println(err)
+      }
+
+      for(rows.Next()){
+
+          var row Row
+          var feed FeedBack
+
+        if err := rows.Scan(&row.x, &row.y, &row.z); err != nil {
+            log.Println(err)
+
+        } else {
+            feed.Content = row.x
+            feed.Company = row.y
+            feed.User = row.z
+            feeds = append(feeds, feed)
+
+        }
+      }
+        log.Println(feeds)
 				c.JSON(http.StatusOK, gin.H{"feedbacks": feeds})
 
 }
@@ -293,15 +330,6 @@ func addPackageAndOptions(c *gin.Context){
 
   c.JSON(http.StatusOK, gin.H{"status": "your package and it's options submited"})
 
-}
-
-type Row struct {
-    id uint
-    x string
-    y string
-    z string
-    w string
-    v string
 }
 
 // get active packages and its options
